@@ -1,13 +1,13 @@
 package com.example.smarthouseapp2;
 
-import static com.google.android.material.color.utilities.Variant.CONTENT;
-
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import androidx.activity.EdgeToEdge;
@@ -16,7 +16,23 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+// Imports Volley
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.Volley;
+
+// Imports JSON
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class MainActivity2 extends AppCompatActivity {
+    private static final String TAG = "MainActivity2";
+    private LinearLayout linearLayout;
+    private static final String URL = "http://happyresto.enseeiht.fr/smartHouse/api/v1/devices/32";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,24 +40,50 @@ public class MainActivity2 extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main2);
 
-        LinearLayout linearLayout = findViewById(R.id.linearLayout);
-        View widget =  createDeviceView("applephone","v16",Boolean.FALSE);
-        if (widget.getParent() != null) {
-            ((ViewGroup) widget.getParent()).removeView(widget);
-        }
-        linearLayout.addView(widget);
+        linearLayout = findViewById(R.id.linearLayout);
 
-        View widget2 =  createDeviceView("apple","v16",Boolean.FALSE);
-        if (widget2.getParent() != null) {
-            ((ViewGroup) widget2.getParent()).removeView(widget2);
-        }
-        linearLayout.addView(widget2);
+        // Initialisation de la file de requêtes Volley
+        RequestQueue queue = Volley.newRequestQueue(this);
 
+        // Création de la requête JSON
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(
+            Request.Method.GET,
+            URL,
+            null,
+            new Response.Listener<JSONArray>() {
+                @Override
+                public void onResponse(JSONArray response) {
+                    try {
+                        // Parcours de tous les appareils
+                        for (int i = 0; i < response.length(); i++) {
+                            JSONObject device = response.getJSONObject(i);
+                            View deviceView = createDeviceView(
+                                device.getString("NAME"),
+                                device.getString("MODEL"),
+                                device.getInt("STATE") == 1
+                            );
+                            if (deviceView.getParent() != null) {
+                                ((ViewGroup) deviceView.getParent()).removeView(deviceView);
+                            }
+                            linearLayout.addView(deviceView);
+                        }
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Erreur lors du parsing JSON: " + e.getMessage());
+                        Toast.makeText(MainActivity2.this, "Erreur lors du chargement des données", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            },
+            new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e(TAG, "Erreur Volley: " + error.getMessage());
+                    Toast.makeText(MainActivity2.this, "Erreur lors de la connexion au serveur", Toast.LENGTH_SHORT).show();
+                }
+            }
+        );
 
-       /* for (int i=0 ; i<4 ; i++){
-
-        }*/
-
+        // Ajout de la requête à la file
+        queue.add(jsonArrayRequest);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -49,7 +91,6 @@ public class MainActivity2 extends AppCompatActivity {
             return insets;
         });
     }
-
 
     public View createDeviceView(String nomAppareil, String informations, Boolean isOn) {
         RelativeLayout layout = new RelativeLayout ( this ) ;
@@ -100,7 +141,5 @@ public class MainActivity2 extends AppCompatActivity {
         layout.addView(toggleButton, paramsBottomRight);
 
         return layout ;
-
     }
-
 }
