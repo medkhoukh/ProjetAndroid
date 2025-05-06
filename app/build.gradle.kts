@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.projet"
+    namespace = "com.example.smarthouseapp2"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.projet"
+        applicationId = "com.example.smarthouseapp2"
         minSdk = 29
         targetSdk = 35
         versionCode = 1
@@ -40,4 +40,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    implementation(libs.volley)
 }
