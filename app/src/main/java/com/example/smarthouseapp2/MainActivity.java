@@ -26,8 +26,8 @@ public class MainActivity extends AppCompatActivity {
         Button startServerButton = findViewById(R.id.serveur);
         Button startClientButton = findViewById(R.id.client);
 
-        buttonListener(startClientButton);
-        buttonListener(startServerButton);
+        buttonListenerClient(startClientButton);
+        buttonListenerServer(startServerButton);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -35,8 +35,20 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    //méthode pour gérer le click sur le boutton
-    protected void buttonListener(Button button){
+    //méthode pour gérer le click sur le boutton qui renvoie vers l'interface serveur
+    protected void buttonListenerServer(Button button){
+        button.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                // Créer un Intent pour ouvrir la deuxième activité
+                Intent intent = new Intent(MainActivity.this, MainActivity2.class);
+                startActivity(intent);
+            }
+        });
+    }
+
+    //méthode pour gérer le click sur le boutton qui renvoie vers l'interface client
+    protected void buttonListenerClient(Button button){
         button.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
