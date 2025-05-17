@@ -23,9 +23,11 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        Button startButton = findViewById(R.id.BouttonStart);
+        Button startServerButton = findViewById(R.id.serveur);
+        Button startClientButton = findViewById(R.id.client);
 
-        buttonListener(startButton);
+        buttonListener(startClientButton);
+        buttonListener(startServerButton);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
