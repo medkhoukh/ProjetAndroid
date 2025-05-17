@@ -1,6 +1,7 @@
 package com.example.smarthouseapp2;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,17 +23,27 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.android.volley.AuthFailureError;
 
 // Imports JSON
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class MainActivity2 extends AppCompatActivity {
     private static final String TAG = "MainActivity2";
+
+    private Handler handler = new Handler ();
+    private Runnable runnableCode ;
     private LinearLayout linearLayout;
     private static final String URL = "http://happyresto.enseeiht.fr/smartHouse/api/v1/devices/32";
+    private static final String POST_URL = "http://happyresto.enseeiht.fr/smartHouse/api/v1/devices/";
+    private static final int houseId = 32;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,58 +52,88 @@ public class MainActivity2 extends AppCompatActivity {
         setContentView(R.layout.activity_main2);
 
         linearLayout = findViewById(R.id.linearLayout);
-
         // Initialisation de la file de requêtes Volley
         RequestQueue queue = Volley.newRequestQueue(this);
 
-        // Création de la requête JSON
-        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(
-            Request.Method.GET,
-            URL,
-            null,
-            new Response.Listener<JSONArray>() {
-                @Override
-                public void onResponse(JSONArray response) {
-                    try {
-                        // Parcours de tous les appareils
-                        for (int i = 0; i < response.length(); i++) {
-                            JSONObject device = response.getJSONObject(i);
-                            View deviceView = createDeviceView(
-                                device.getString("NAME"),
-                                device.getString("MODEL"),
-                                device.getInt("STATE") == 1
-                            );
-                            if (deviceView.getParent() != null) {
-                                ((ViewGroup) deviceView.getParent()).removeView(deviceView);
+        //initialisation du runnable pour un raffraichissement des données
+        runnableCode = new Runnable(){
+            @Override
+            public void run(){
+                Log.d(TAG,"appel périodique");
+
+                // Création de la requête JSON
+                JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(
+                        Request.Method.GET,
+                        URL,
+                        null,
+                        new Response.Listener<JSONArray>() {
+                            @Override
+                            public void onResponse(JSONArray response) {
+                                try {
+                                    // Parcours de tous les appareils
+                                    for (int i = 0; i < response.length(); i++) {
+                                        JSONObject device = response.getJSONObject(i);
+
+
+                                        View deviceView = createDeviceView(device.getInt("ID"),
+                                                " [ " + device.getString("BRAND") + " ] " + device.getString("NAME"),
+                                                device.getString("MODEL")
+                                                        + ( device.getString("DATA").isEmpty() ? "" : " | DATA: " + device.getString("DATA"))
+                                                        + ( device.getInt("AUTONOMY") == -1 ? "" : " | AUTONOMY: " + device.getString("AUTONOMY" ) + "%"),
+                                                device.getInt("STATE") == 1
+                                        );
+                                        if (deviceView.getParent() != null) {
+                                            ((ViewGroup) deviceView.getParent()).removeView(deviceView);
+                                        }
+                                        linearLayout.addView(deviceView);
+
+                                        // Ajout d'un espace vertical entre les appareils
+                                        View spacer = new View(MainActivity2.this);
+                                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                                30); // 20dp de hauteur pour l'espace
+                                        spacer.setLayoutParams(params);
+                                        linearLayout.addView(spacer);
+
+                                    }
+                                } catch (JSONException e) {
+                                    Log.e(TAG, "Erreur lors du parsing JSON: " + e.getMessage());
+                                    Toast.makeText(MainActivity2.this, "Erreur lors du chargement des données", Toast.LENGTH_SHORT).show();
+                                }
                             }
-                            linearLayout.addView(deviceView);
+                        },
+                        new Response.ErrorListener() {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                Log.e(TAG, "Erreur Volley: " + error.getMessage());
+                                Toast.makeText(MainActivity2.this, "Erreur lors de la connexion au serveur", Toast.LENGTH_SHORT).show();
+                            }
                         }
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Erreur lors du parsing JSON: " + e.getMessage());
-                        Toast.makeText(MainActivity2.this, "Erreur lors du chargement des données", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            },
-            new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Log.e(TAG, "Erreur Volley: " + error.getMessage());
-                    Toast.makeText(MainActivity2.this, "Erreur lors de la connexion au serveur", Toast.LENGTH_SHORT).show();
-                }
+                );
+
+                // Ajout de la requête à la file
+                queue.add(jsonArrayRequest);
+
+                ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+                    Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+                    return insets;
+                });
+
+
+
+                handler.postDelayed(this, 1000);
             }
-        );
 
-        // Ajout de la requête à la file
-        queue.add(jsonArrayRequest);
+            };
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+
+
+
+
     }
 
-    public View createDeviceView(String nomAppareil, String informations, Boolean isOn) {
+    public View createDeviceView(int id, String nomAppareil, String informations, Boolean isOn) {
         RelativeLayout layout = new RelativeLayout ( this ) ;
         //paramètres de position relative
         RelativeLayout . LayoutParams paramsTopLeft =
@@ -135,11 +176,90 @@ public class MainActivity2 extends AppCompatActivity {
         ToggleButton toggleButton = new ToggleButton(this);
         toggleButton.setTextOn("ON");
         toggleButton.setTextOff("OFF");
-        toggleButton.setChecked(false); // Par défaut sur OFF
+        toggleButton.setChecked(isOn);   //vérifier l'état du boutton à partir des paramètres de la fonction qu'on recevra à partir de la methode GET
+
+        toggleButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendTurnOnOffRequest(id);
+            }
+        });
 
         // Ajout du bouton au layout
         layout.addView(toggleButton, paramsBottomRight);
 
-        return layout ;
+        return layout;
     }
-}
+
+    //methode pour l'envoi de la requete off/on lors du click sur le boutton
+    private void sendTurnOnOffRequest(final int deviceId) {
+        // Initialisation de la file de requêtes Volley
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        // Création de la requête pour changer l'état de l'appareil
+        StringRequest stringRequest = new StringRequest(
+                Request.Method.POST,
+                POST_URL,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d(TAG, "État changé avec succès: " + response);
+                        Toast.makeText(MainActivity2.this, "État de l'appareil modifié", Toast.LENGTH_SHORT).show();
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e(TAG, "Erreur lors de la modification de l'état: " + error.getMessage());
+                        Toast.makeText(MainActivity2.this, "Échec de la modification de l'état", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        ) {
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<>();
+                params.put("deviceId", String.valueOf(deviceId));
+                params.put("houseId", String.valueOf(houseId));
+                params.put("action", "turnOnOff");
+                return params;
+            }
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Content-Type", "application/x-www-form-urlencoded");
+                return headers;
+            }
+        };
+
+        // Ajout de la requête à la file
+        queue.add(stringRequest);
+    }
+
+
+
+        @Override
+        protected void onResume() {
+            super.onResume();
+
+            // Démarre l'exécution périodique
+            handler.post(runnableCode);
+        }
+
+        @Override
+        protected void onPause() {
+            super.onPause();
+
+            // Stoppe les appels programmés quand l’activité est en pause
+            handler.removeCallbacks(runnableCode);
+        }
+
+
+
+
+    }
+
+
+
+
+
